@@ -1,0 +1,29 @@
+gui.optionsprofiles.profiles-menu=Profiles
+gui.optionsprofiles.save-current-options=Save Current Options
+gui.optionsprofiles.load-profile=Load
+gui.optionsprofiles.edit-profile=Edit
+
+gui.optionsprofiles.editing-profile-title=Editing Profile:
+gui.optionsprofiles.profile-name-text=Profile Name
+gui.optionsprofiles.servers-text=Server List
+gui.optionsprofiles.servers-hint=mc.hypixel.net, play.mccis...
+
+gui.optionsprofiles.overwrite-options=Overwrite
+gui.optionsprofiles.rename-profile=Rename
+gui.optionsprofiles.delete-profile=Delete
+gui.optionsprofiles.keybind-index=Keybind:
+gui.optionsprofiles.load-on-startup=Load on startup:
+
+gui.optionsprofiles.options-toggle=Select options
+gui.optionsprofiles.options-search=Search...
+gui.optionsprofiles.all-on=All ON
+gui.optionsprofiles.all-off=All OFF
+
+gui.optionsprofiles.settings-button=Settings
+gui.optionsprofiles.settings-menu=Options Profiles Settings
+gui.optionsprofiles.show-profiles-button=Show Profiles Button:
+
+key.categories.optionsprofiles=Options Profiles
+key.optionsprofiles.profile_1=Profile Keybind 1
+key.optionsprofiles.profile_2=Profile Keybind 2
+key.optionsprofiles.profile_3=Profile Keybind 3

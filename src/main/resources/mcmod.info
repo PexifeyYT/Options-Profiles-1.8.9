@@ -1,0 +1,11 @@
+[{
+  "modid": "optionsprofiles",
+  "name": "Options Profiles",
+  "description": "Save and load your Minecraft options as profiles from in-game. Ported to Forge 1.8.9 by Pexifey.",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
+  "url": "https://github.com/Pexifey/Options-Profiles-1.8.9",
+  "authorList": ["trafficlunar", "Pexifey"],
+  "logoFile": "assets/optionsprofiles/icon.png",
+  "parent": ""
+}]
