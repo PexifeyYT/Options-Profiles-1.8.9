@@ -26,7 +26,9 @@ Save, load, and manage multiple Minecraft options presets. Switch between PvP se
 
 Drop the `.jar` into your `mods/` folder. Requires Forge for Minecraft 1.8.9.
 
-Compatible with Lunar Client (Forge mod support), standard Forge launchers, and any 1.8.9 Forge-compatible client.
+Compatible with standard Forge 1.8.9, Feather Client, and any launcher that supports external Forge mods.
+
+> **Lunar Client note:** Lunar Client 1.8.9 does **not** support loading external Forge mods — their Forge module only loads a hardcoded set of bundled mods. This mod will not load on Lunar Client. Use standard Forge or Feather Client instead.
 
 ## Usage
 
