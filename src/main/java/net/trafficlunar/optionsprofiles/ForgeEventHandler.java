@@ -1,60 +1,92 @@
 package net.trafficlunar.optionsprofiles;
 
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.gameevent.TickEvent;
-import net.minecraftforge.fml.common.network.FMLNetworkEvent;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.GuiOptions;
-import net.minecraftforge.client.event.GuiOpenEvent;
-import net.minecraftforge.client.event.GuiScreenEvent;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.gameevent.TickEvent;
+import net.minecraftforge.fml.common.network.FMLNetworkEvent;
 import net.trafficlunar.optionsprofiles.gui.ProfilesScreen;
 import net.trafficlunar.optionsprofiles.profiles.ProfileConfiguration;
 import net.trafficlunar.optionsprofiles.profiles.Profiles;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Stream;
 
 public class ForgeEventHandler {
     private static final int PROFILES_BUTTON_ID = 250;
     private static boolean startupProfilesLoaded = false;
+    private static Field buttonListField;
+
+    static {
+        try {
+            buttonListField = net.minecraft.client.gui.GuiScreen.class.getDeclaredField("buttonList");
+            buttonListField.setAccessible(true);
+        } catch (Exception e) {
+            buttonListField = null;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<GuiButton> getButtonList(net.minecraft.client.gui.GuiScreen screen) {
+        if (buttonListField == null) return null;
+        try {
+            return (List<GuiButton>) buttonListField.get(screen);
+        } catch (Exception e) {
+            return null;
+        }
+    }
 
     @SuppressWarnings("unchecked")
     @SubscribeEvent
-    public void onGuiInit(GuiScreenEvent.InitGuiEvent.Post event) {
-        if (event.gui instanceof GuiOptions) {
-            if (OptionsProfilesMod.config().shouldShowProfilesButton()) {
-                event.buttonList.add(new GuiButton(PROFILES_BUTTON_ID, 5, 5, 75, 20, "Profiles"));
-            }
-        }
-    }
+    public void onClientTick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
 
-    @SubscribeEvent
-    public void onGuiAction(GuiScreenEvent.ActionPerformedEvent.Pre event) {
-        if (event.gui instanceof GuiOptions && event.button.id == PROFILES_BUTTON_ID) {
-            event.gui.mc.displayGuiScreen(new ProfilesScreen(event.gui));
-            event.setCanceled(true);
-        }
-    }
+        Minecraft mc = Minecraft.getMinecraft();
 
-    @SubscribeEvent
-    public void onGuiOpen(GuiOpenEvent event) {
-        if (!startupProfilesLoaded && event.gui instanceof GuiMainMenu) {
+        // Startup profile detection — tick-based so works on Lunar Client
+        if (!startupProfilesLoaded && mc.currentScreen instanceof GuiMainMenu) {
             startupProfilesLoaded = true;
             loadStartupProfiles();
         }
-    }
 
-    @SubscribeEvent
-    public void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase == TickEvent.Phase.END) {
-            Keybinds.onTick();
+        // Inject Profiles button into GuiOptions every tick — compatible with
+        // Lunar Client which does not fire GuiScreenEvent.InitGuiEvent
+        if (mc.currentScreen instanceof GuiOptions
+                && OptionsProfilesMod.config().shouldShowProfilesButton()) {
+            final GuiOptions gui = (GuiOptions) mc.currentScreen;
+            List<GuiButton> buttons = getButtonList(gui);
+            if (buttons == null) return;
+
+            boolean found = false;
+            for (GuiButton btn : buttons) {
+                if (btn.id == PROFILES_BUTTON_ID) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                buttons.add(new GuiButton(PROFILES_BUTTON_ID, 5, 5, 75, 20, "Profiles") {
+                    @Override
+                    public boolean mousePressed(Minecraft mc2, int mouseX, int mouseY) {
+                        boolean hit = super.mousePressed(mc2, mouseX, mouseY);
+                        if (hit) {
+                            mc2.displayGuiScreen(new ProfilesScreen(gui));
+                        }
+                        return hit;
+                    }
+                });
+            }
         }
+
+        Keybinds.onTick();
     }
 
     private void loadStartupProfiles() {
@@ -97,8 +129,7 @@ public class ForgeEventHandler {
                 String servers = cfg.getServers();
                 if (servers == null || servers.isEmpty()) return;
 
-                String[] serverList = servers.split(",");
-                for (String s : serverList) {
+                for (String s : servers.split(",")) {
                     if (s.trim().equals(ip)) {
                         Profiles.loadProfile(profileName);
                         OptionsProfilesMod.LOGGER.info("[Profile '{}']: Loaded on server ({}){}", profileName, ip, isLeave ? " leave" : "");
