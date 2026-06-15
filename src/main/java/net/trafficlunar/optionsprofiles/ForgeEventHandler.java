@@ -2,8 +2,7 @@ package net.trafficlunar.optionsprofiles;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
-import net.minecraft.client.gui.GuiMainMenu;
-import net.minecraft.client.gui.GuiOptions;
+import net.minecraft.client.gui.GuiScreen;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 import net.minecraftforge.fml.common.network.FMLNetworkEvent;
@@ -23,25 +22,47 @@ import java.util.stream.Stream;
 public class ForgeEventHandler {
     private static final int PROFILES_BUTTON_ID = 250;
     private static boolean startupProfilesLoaded = false;
-    private static Field buttonListField;
 
-    static {
-        try {
-            buttonListField = net.minecraft.client.gui.GuiScreen.class.getDeclaredField("buttonList");
-            buttonListField.setAccessible(true);
-        } catch (Exception e) {
-            buttonListField = null;
+    /** Walk up class hierarchy to find buttonList — handles Lunar's GuiOptions subclass */
+    @SuppressWarnings("unchecked")
+    private static List<GuiButton> getButtonList(GuiScreen screen) {
+        Class<?> cls = screen.getClass();
+        while (cls != null) {
+            try {
+                Field f = cls.getDeclaredField("buttonList");
+                f.setAccessible(true);
+                return (List<GuiButton>) f.get(screen);
+            } catch (NoSuchFieldException ignored) {
+                cls = cls.getSuperclass();
+            } catch (Exception e) {
+                return null;
+            }
         }
+        return null;
     }
 
-    @SuppressWarnings("unchecked")
-    private static List<GuiButton> getButtonList(net.minecraft.client.gui.GuiScreen screen) {
-        if (buttonListField == null) return null;
-        try {
-            return (List<GuiButton>) buttonListField.get(screen);
-        } catch (Exception e) {
-            return null;
+    /** True if screen is GuiOptions or any subclass/reimplementation by name */
+    private static boolean isOptionsScreen(GuiScreen screen) {
+        if (screen == null) return false;
+        Class<?> cls = screen.getClass();
+        while (cls != null && cls != Object.class) {
+            String name = cls.getSimpleName();
+            if (name.equals("GuiOptions")) return true;
+            cls = cls.getSuperclass();
         }
+        return false;
+    }
+
+    /** True if screen is GuiMainMenu or subclass by name */
+    private static boolean isMainMenuScreen(GuiScreen screen) {
+        if (screen == null) return false;
+        Class<?> cls = screen.getClass();
+        while (cls != null && cls != Object.class) {
+            String name = cls.getSimpleName();
+            if (name.equals("GuiMainMenu")) return true;
+            cls = cls.getSuperclass();
+        }
+        return false;
     }
 
     @SuppressWarnings("unchecked")
@@ -50,19 +71,17 @@ public class ForgeEventHandler {
         if (event.phase != TickEvent.Phase.END) return;
 
         Minecraft mc = Minecraft.getMinecraft();
+        GuiScreen screen = mc.currentScreen;
 
-        // Startup profile detection — tick-based so works on Lunar Client
-        if (!startupProfilesLoaded && mc.currentScreen instanceof GuiMainMenu) {
+        // Startup profile detection — tick-based, name-checked for Lunar compatibility
+        if (!startupProfilesLoaded && isMainMenuScreen(screen)) {
             startupProfilesLoaded = true;
             loadStartupProfiles();
         }
 
-        // Inject Profiles button into GuiOptions every tick — compatible with
-        // Lunar Client which does not fire GuiScreenEvent.InitGuiEvent
-        if (mc.currentScreen instanceof GuiOptions
-                && OptionsProfilesMod.config().shouldShowProfilesButton()) {
-            final GuiOptions gui = (GuiOptions) mc.currentScreen;
-            List<GuiButton> buttons = getButtonList(gui);
+        // Inject Profiles button — name-based check so Lunar's GuiOptions subclass matches
+        if (isOptionsScreen(screen) && OptionsProfilesMod.config().shouldShowProfilesButton()) {
+            List<GuiButton> buttons = getButtonList(screen);
             if (buttons == null) return;
 
             boolean found = false;
@@ -73,12 +92,13 @@ public class ForgeEventHandler {
                 }
             }
             if (!found) {
+                final GuiScreen optionsGui = screen;
                 buttons.add(new GuiButton(PROFILES_BUTTON_ID, 5, 5, 75, 20, "Profiles") {
                     @Override
                     public boolean mousePressed(Minecraft mc2, int mouseX, int mouseY) {
                         boolean hit = super.mousePressed(mc2, mouseX, mouseY);
                         if (hit) {
-                            mc2.displayGuiScreen(new ProfilesScreen(gui));
+                            mc2.displayGuiScreen(new ProfilesScreen(optionsGui));
                         }
                         return hit;
                     }
